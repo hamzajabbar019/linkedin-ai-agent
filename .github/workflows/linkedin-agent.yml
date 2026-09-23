@@ -59,5 +59,8 @@ jobs:
             echo "No topic history changes."
           else
             git commit -m "Update LinkedIn topic history"
+
+            git pull --rebase origin main
+
             git push
           fi
