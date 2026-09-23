@@ -1,0 +1,63 @@
+name: LinkedIn AI Agent
+
+on:
+  schedule:
+    # Monday, Wednesday, Friday
+    # 14:00 UTC = 19:00 Pakistan time
+    - cron: "0 14 * * 1,3,5"
+
+  # Allows manual testing from GitHub Actions
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create environment file
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > .env
+
+      - name: Create LinkedIn access token file
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        run: |
+          printf '%s' "$LINKEDIN_ACCESS_TOKEN" > .linkedin_token
+
+      - name: Run LinkedIn AI Agent
+        run: |
+          python agent.py
+
+      - name: Save topic history
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add posted_topics.json
+
+          if git diff --cached --quiet; then
+            echo "No topic history changes."
+          else
+            git commit -m "Update LinkedIn topic history"
+            git push
+          fi
