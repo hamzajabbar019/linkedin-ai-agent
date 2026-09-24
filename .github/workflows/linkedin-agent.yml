@@ -9,6 +9,10 @@ on:
   # Allows manual testing from GitHub Actions
   workflow_dispatch:
 
+concurrency:
+  group: linkedin-ai-agent
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -19,10 +23,10 @@ jobs:
     steps:
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -33,6 +37,23 @@ jobs:
 
       - name: Create environment file
         env:
+      - name: Save topic history
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add posted_topics.json
+
+          if git diff --cached --quiet; then
+            echo "No topic history changes."
+          else
+            git commit -m "Update LinkedIn topic history"
+
+            git pull --rebase origin main
+
+            git push
+          fi
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > .env
@@ -57,10 +78,26 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No topic history changes."
-          else
-            git commit -m "Update LinkedIn topic history"
-
-            git pull --rebase origin main
-
-            git push
+            exit 0
           fi
+
+          git commit -m "Update LinkedIn topic history"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Push attempt $attempt/5"
+
+            git fetch origin main
+
+            git rebase origin/main
+
+            if git push origin HEAD:main; then
+              echo "Topic history successfully pushed."
+              exit 0
+            fi
+
+            echo "Push failed. Retrying..."
+            sleep 5
+          done
+
+          echo "Could not push topic history after 5 attempts."
+          exit 1
