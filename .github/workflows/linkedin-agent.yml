@@ -1,10 +1,10 @@
-name: LinkedIn AI Agent
+#name: LinkedIn AI Agent
 
-on:
-  schedule:
+#on:
+ # schedule:
     # Monday, Wednesday, Friday
     # 14:00 UTC = 19:00 Pakistan time
-    - cron: "0 14 * * 1,3,5"
+  #  - cron: "0 14 * * 1,3,5"
 
   workflow_dispatch:
 
@@ -82,4 +82,4 @@ jobs:
           done
 
           echo "Could not push topic history after 5 attempts."
-          exit 1
+        #  exit 1
